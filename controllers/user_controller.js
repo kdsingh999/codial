@@ -1,9 +1,20 @@
 const User = require('../models/user');
 module.exports = {
-  profile: (req, res) => {
-    return res.render('user_profile', {
-      title: 'User Profile',
-    });
+  profile: async (req, res) => {
+    try {
+      if (req.cookies.user_id) {
+        const user = await User.findById(req.cookies.user_id);
+        if (user) {
+          return res.render('user_profile', {
+            title: 'User Profile',
+            user: user,
+          });
+        }
+        return res.redirect('/users/signin');
+      } else {
+        return res.redirect('/users/signin');
+      }
+    } catch (error) {}
   },
   signin: (req, res) => {
     return res.render('user_sign_in', {
@@ -38,28 +49,21 @@ module.exports = {
     }
   },
   createSession: async (req, res) => {
-    //find the user
-    await User.findOne({ email: req.body.email }, (err, user) => {
-      if (err) {
-        console.log('error in finding user in sign up');
-        return;
-      }
-      //handle user found
-      if (user) {
+    try {
+      const email = req.body.email;
+      const user = await User.findOne({ email: email });
+      if (!user) {
+        return res.redirect('back');
+      } else {
         if (user.password != req.body.password) {
           return res.redirect('back');
+        } else {
+          await res.cookie('user_id', user.id);
+          return res.redirect('/users/profile');
         }
-        res.cookie('user_id', user.id);
-        return res.redirect('/users/profile');
-      } else {
-        return res.redirect('back');
       }
-    });
-
-    //handle user found
-
-    //handle password
-
-    //handle user not found
+    } catch (error) {
+      res.send(err);
+    }
   },
 };
